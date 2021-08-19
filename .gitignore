@@ -1,0 +1,7 @@
+/.idea
+.DS_Store
+/node_modules
+/yarn.lock
+/build
+/CMakeLists.txt
+/cmake-build-debug
