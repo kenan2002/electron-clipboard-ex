@@ -1,8 +1,7 @@
 #include <napi.h>
 #include "clipboard.h"
 
-Napi::Array ReadFilePathsJs(const Napi::CallbackInfo &info) {
-    auto env = info.Env();
+Napi::Array ReadFilePathsInner(const Napi::Env &env) {
     const auto file_paths = ReadFilePaths();
     auto result = Napi::Array::New(env, file_paths.size());
     for (size_t i = 0; i != file_paths.size(); ++i) {
@@ -11,14 +10,19 @@ Napi::Array ReadFilePathsJs(const Napi::CallbackInfo &info) {
     return result;
 }
 
+Napi::Array ReadFilePathsJs(const Napi::CallbackInfo &info) {
+    auto env = info.Env();
+    return ReadFilePathsInner(env);
+}
 
-void WriteFilePathsJs(const Napi::CallbackInfo &info) {
+
+Napi::Value WriteFilePathsJs(const Napi::CallbackInfo &info) {
     Napi::Env env = info.Env();
 
     if (info.Length() < 1) {
         Napi::TypeError::New(env, "Expect 1 argument but got 0.")
                 .ThrowAsJavaScriptException();
-        return;
+        return env.Null();
     }
 
     auto file_paths_js = info[0].As<Napi::Array>();
@@ -29,11 +33,13 @@ void WriteFilePathsJs(const Napi::CallbackInfo &info) {
         if (path.empty()) {
             Napi::TypeError::New(env, "Empty path is not allowed")
                     .ThrowAsJavaScriptException();
-            return;
+            return env.Null();
         }
         file_paths.emplace_back(path);
     }
     WriteFilePaths(file_paths);
+
+    return ReadFilePathsInner(env);
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
