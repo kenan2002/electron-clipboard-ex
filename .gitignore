@@ -6,3 +6,4 @@
 /build
 /CMakeLists.txt
 /cmake-build-debug
+/package-lock.json

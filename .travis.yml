@@ -1,0 +1,12 @@
+os:
+  - osx
+  - windows
+language: node_js
+node_js:
+  - node
+  - lts/*
+  - '14'
+  - '12'
+  - '10'
+script:
+  - travis_retry npm test
