@@ -37,6 +37,19 @@
             },
           }
         ],
+        [
+          'OS=="win"',
+          {
+            "sources": [
+              "src/clipboard_win.cc"
+            ],
+            "msvs_settings": {
+              "VCCLCompilerTool": {
+                "AdditionalOptions": ["/std:c++17"]
+              }
+            },
+          }
+        ],
       ]
     }
   ]
