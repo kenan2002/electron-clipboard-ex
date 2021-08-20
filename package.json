@@ -3,6 +3,20 @@
   "version": "1.0.0",
   "description": "Extended electron.js clipboard module.",
   "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "src",
+    "binding.gyp",
+    "index.js",
+    "index.d.ts"
+  ],
+  "homepage": "https://github.com/kenan2002/electron-clipboard-ex",
+  "keywords": [
+    "electron",
+    "clipboard",
+    "finder",
+    "explorer"
+  ],
   "author": "kenan2002",
   "license": "MIT",
   "dependencies": {
