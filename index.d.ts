@@ -1,3 +1,3 @@
-declare function readFilePaths(): string[];
+export function readFilePaths(): string[];
 
-declare function writeFilePaths(filePaths: string[]): void;
+export function writeFilePaths(filePaths: string[]): void;
