@@ -42,9 +42,63 @@ Napi::Value WriteFilePathsJs(const Napi::CallbackInfo &info) {
     return ReadFilePathsInner(env);
 }
 
+void ClearClipboardJs(const Napi::CallbackInfo &info) {
+    ClearClipboard();
+}
+
+Napi::Boolean SaveClipboardImageAsJpegJs(const Napi::CallbackInfo &info) {
+    Napi::Env env = info.Env();
+
+    if (info.Length() < 2) {
+        Napi::TypeError::New(env, "Expect 2 arguments.")
+        .ThrowAsJavaScriptException();
+        return Napi::Boolean::New(env, false);
+    }
+
+    std::string target_path = info[0].As<Napi::String>();
+    float compression_factor = info[1].As<Napi::Number>();
+    bool result = SaveClipboardImageAsJpeg(target_path, compression_factor);
+
+    return Napi::Boolean::New(env, result);
+}
+
+Napi::Boolean SaveClipboardImageAsPngJs(const Napi::CallbackInfo &info) {
+    Napi::Env env = info.Env();
+
+    if (info.Length() < 1) {
+        Napi::TypeError::New(env, "Expect 1 argument but got 0.")
+        .ThrowAsJavaScriptException();
+        return Napi::Boolean::New(env, false);
+    }
+
+    std::string target_path = info[0].As<Napi::String>();
+    bool result = SaveClipboardImageAsPng(target_path);
+
+    return Napi::Boolean::New(env, result);
+}
+
+Napi::Boolean PutImageIntoClipboardJs(const Napi::CallbackInfo &info) {
+    Napi::Env env = info.Env();
+
+    if (info.Length() < 1) {
+        Napi::TypeError::New(env, "Expect 1 argument but got 0.")
+        .ThrowAsJavaScriptException();
+        return Napi::Boolean::New(env, false);
+    }
+
+    std::string image_path = info[0].As<Napi::String>();
+    bool result = PutImageIntoClipboard(image_path);
+
+    return Napi::Boolean::New(env, result);
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set("readFilePaths", Napi::Function::New(env, ReadFilePathsJs));
     exports.Set("writeFilePaths", Napi::Function::New(env, WriteFilePathsJs));
+    exports.Set("clear", Napi::Function::New(env, ClearClipboardJs));
+    exports.Set("saveImageAsJpegSync", Napi::Function::New(env, SaveClipboardImageAsJpegJs));
+    exports.Set("saveImageAsPngSync", Napi::Function::New(env, SaveClipboardImageAsPngJs));
+    exports.Set("putImageSync", Napi::Function::New(env, PutImageIntoClipboardJs));
     return exports;
 }
 
