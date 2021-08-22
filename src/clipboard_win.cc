@@ -1,6 +1,9 @@
 #include <Windows.h>
 #include <ShlObj.h>
+#include <gdiplus.h>
 #include "clipboard.h"
+
+using namespace Gdiplus;
 
 std::string Utf16CStringToUtf8String(LPCWSTR input, UINT len) {
     int target_len = WideCharToMultiByte(CP_UTF8, 0, input, len, NULL, 0, NULL, NULL);
@@ -102,4 +105,165 @@ void WriteFilePaths(const std::vector<std::string> &file_paths) {
     }
 
     CloseClipboard();
+}
+
+void ClearClipboard() {
+    if (!OpenClipboard(NULL)) {
+        return;
+    }
+    EmptyClipboard();
+    CloseClipboard();
+}
+
+bool GetEncoderClsid(const WCHAR *format, CLSID *pClsid)
+{
+    UINT  num = 0;          // number of image encoders
+    UINT  size = 0;         // size of the image encoder array in bytes
+
+    ImageCodecInfo* pImageCodecInfo = NULL;
+
+    GetImageEncodersSize(&num, &size);
+    if (size == 0) {
+        return false;
+    }
+
+    pImageCodecInfo = (ImageCodecInfo*)(malloc(size));
+    if (pImageCodecInfo == NULL) {
+        return false;
+    }
+
+    if (GetImageEncoders(num, size, pImageCodecInfo) != Ok) {
+        free(pImageCodecInfo);
+        return false;
+    }
+
+    for (UINT j = 0; j < num; ++j)
+    {
+        if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0)
+        {
+            *pClsid = pImageCodecInfo[j].Clsid;
+            free(pImageCodecInfo);
+            return true;
+        }
+    }
+
+    free(pImageCodecInfo);
+    return false;
+}
+
+bool SaveBitmapAsJpeg(HBITMAP hBmp, LPCWSTR lpszFilename, ULONG uQuality)
+{
+    GdiplusStartupInput gdiplusStartupInput;
+    ULONG_PTR gdiplusToken;
+    GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
+    Bitmap *pBitmap = new Bitmap(hBmp, NULL);
+
+    CLSID imageCLSID;
+    GetEncoderClsid(L"image/jpeg", &imageCLSID);
+
+    EncoderParameters encoderParams;
+    encoderParams.Count = 1;
+    encoderParams.Parameter[0].NumberOfValues = 1;
+    encoderParams.Parameter[0].Guid = EncoderQuality;
+    encoderParams.Parameter[0].Type = EncoderParameterValueTypeLong;
+    encoderParams.Parameter[0].Value = &uQuality;
+
+    Status result = pBitmap->Save(lpszFilename, &imageCLSID, &encoderParams);
+
+    delete pBitmap;
+    GdiplusShutdown(gdiplusToken);
+
+    return result == Ok;
+}
+
+bool SaveBitmapAsPng(HBITMAP hBmp, LPCWSTR lpszFilename)
+{
+    GdiplusStartupInput gdiplusStartupInput;
+    ULONG_PTR gdiplusToken;
+    GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
+    Bitmap *pBitmap = new Bitmap(hBmp, NULL);
+
+    CLSID imageCLSID;
+    GetEncoderClsid(L"image/png", &imageCLSID);
+
+    Status result = pBitmap->Save(lpszFilename, &imageCLSID, NULL);
+
+    delete pBitmap;
+    GdiplusShutdown(gdiplusToken);
+
+    return result == Ok;
+}
+
+
+bool SaveClipboardImageAsJpeg(const std::string &target_path, float compression_factor) {
+    if (!OpenClipboard(NULL)) {
+        return false;
+    }
+
+    bool result = false;
+    HBITMAP image_handle = (HBITMAP)GetClipboardData(CF_BITMAP);
+    if (image_handle) {
+        std::wstring target_path_unicode = Utf8StringToUtf16String(target_path);
+        ULONG quality = (ULONG)(compression_factor * 100);
+        result = SaveBitmapAsJpeg(image_handle, target_path_unicode.c_str(), quality);
+    }
+
+    CloseClipboard();
+    return result;
+}
+
+bool SaveClipboardImageAsPng(const std::string &target_path) {
+    if (!OpenClipboard(NULL)) {
+        return false;
+    }
+
+    bool result = false;
+    HBITMAP image_handle = (HBITMAP)GetClipboardData(CF_BITMAP);
+    if (image_handle) {
+        std::wstring target_path_unicode = Utf8StringToUtf16String(target_path);
+        result = SaveBitmapAsPng(image_handle, target_path_unicode.c_str());
+    }
+
+    CloseClipboard();
+    return result;
+}
+
+bool PutImageIntoClipboard(const std::string &image_path) {
+    GdiplusStartupInput gdiplusStartupInput;
+    ULONG_PTR gdiplusToken;
+    GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
+    bool result = false;
+    std::wstring image_path_unicode = Utf8StringToUtf16String(image_path);
+    Bitmap *pImage = new Bitmap(image_path_unicode.c_str());
+    HBITMAP handle;
+    if (pImage->GetHBITMAP(Color::White, &handle) == Ok) {
+        BITMAP bm;
+        GetObject(handle, sizeof bm, &bm);
+        BITMAPINFOHEADER bi = { sizeof bi, bm.bmWidth, bm.bmHeight, 1, bm.bmBitsPixel, BI_RGB };
+
+        std::vector<BYTE> vec(bm.bmWidthBytes * bm.bmHeight);
+        auto hdc = GetDC(NULL);
+        GetDIBits(hdc, handle, 0, bi.biHeight, vec.data(), (BITMAPINFO*)&bi, 0);
+        ReleaseDC(NULL, hdc);
+
+        auto hmem = GlobalAlloc(GMEM_MOVEABLE, sizeof bi + vec.size());
+        auto buffer = (BYTE*)GlobalLock(hmem);
+        memcpy(buffer, &bi, sizeof bi);
+        memcpy(buffer + sizeof bi, vec.data(), vec.size());
+        GlobalUnlock(hmem);
+
+        if (OpenClipboard(NULL)) {
+            EmptyClipboard();
+            SetClipboardData(CF_DIB, hmem);
+            CloseClipboard();
+            result = true;
+        }
+    }
+
+    delete pImage;
+    GdiplusShutdown(gdiplusToken);
+    return result;
 }
