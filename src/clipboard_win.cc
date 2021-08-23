@@ -1,6 +1,7 @@
 #include <Windows.h>
 #include <ShlObj.h>
 #include <gdiplus.h>
+#include <memory>
 #include "clipboard.h"
 
 using namespace Gdiplus;
@@ -12,28 +13,46 @@ std::string Utf16CStringToUtf8String(LPCWSTR input, UINT len) {
     return result;
 }
 
+class ClipboardScope {
+
+    bool valid;
+
+public:
+    ClipboardScope() {
+        valid = static_cast<bool>(OpenClipboard(NULL));
+    }
+
+    ~ClipboardScope() {
+        CloseClipboard();
+    }
+
+    bool IsValid() {
+        return valid;
+    }
+};
+
 std::vector<std::string> ReadFilePaths() {
     auto result = std::vector<std::string>();
 
-    if (!OpenClipboard(NULL)) {
+    ClipboardScope clipboard_scope;
+    if (!clipboard_scope.IsValid()) {
         return result;
     }
 
     HDROP drop_files_handle = (HDROP)GetClipboardData(CF_HDROP);
-    if (drop_files_handle) {
-        UINT file_count = DragQueryFileW(drop_files_handle, 0xFFFFFFFF, NULL, 0);
-        result.reserve(file_count);
-        for (UINT i = 0; i < file_count; ++i) {
-            UINT path_len = DragQueryFileW(drop_files_handle, i, NULL, 0);
-            UINT buffer_len = path_len + 1;
-            LPWSTR buffer = new WCHAR[buffer_len];
-            path_len = DragQueryFileW(drop_files_handle, i, buffer, buffer_len);
-            result.emplace_back(Utf16CStringToUtf8String(buffer, path_len));
-            delete [] buffer;
-        }
+    if (!drop_files_handle) {
+        return result;
     }
 
-    CloseClipboard();
+    UINT file_count = DragQueryFileW(drop_files_handle, 0xFFFFFFFF, NULL, 0);
+    result.reserve(file_count);
+    for (UINT i = 0; i < file_count; ++i) {
+        UINT path_len = DragQueryFileW(drop_files_handle, i, NULL, 0);
+        UINT buffer_len = path_len + 1;
+        std::unique_ptr<WCHAR[]> buffer(new WCHAR[buffer_len]);
+        path_len = DragQueryFileW(drop_files_handle, i, buffer.get(), buffer_len);
+        result.emplace_back(Utf16CStringToUtf8String(buffer.get(), path_len));
+    }
 
     return result;
 }
@@ -92,7 +111,8 @@ void WriteFilePaths(const std::vector<std::string> &file_paths) {
 
     GlobalUnlock(data_handle);
 
-    if (!OpenClipboard(NULL)) {
+    ClipboardScope clipboard_scope;
+    if (!clipboard_scope.IsValid()) {
         GlobalFree(data_handle);
         return;
     }
@@ -103,61 +123,82 @@ void WriteFilePaths(const std::vector<std::string> &file_paths) {
         GlobalFree(data_handle);
         return;
     }
-
-    CloseClipboard();
 }
 
 void ClearClipboard() {
-    if (!OpenClipboard(NULL)) {
+    ClipboardScope clipboard_scope;
+    if (!clipboard_scope.IsValid()) {
         return;
     }
+
     EmptyClipboard();
-    CloseClipboard();
 }
+
+class GdiplusScope {
+
+    ULONG_PTR gdiplusToken;
+    Status initStatus;
+
+public:
+    GdiplusScope() {
+        GdiplusStartupInput gdiplusStartupInput;
+        initStatus = GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+    }
+
+    ~GdiplusScope() {
+        GdiplusShutdown(gdiplusToken);
+    }
+
+    bool IsValid() {
+        return initStatus == Ok;
+    }
+};
+
+struct FreeDeleter {
+    void operator()(void* x) {
+        free(x);
+    }
+};
 
 bool GetEncoderClsid(const WCHAR *format, CLSID *pClsid)
 {
     UINT  num = 0;          // number of image encoders
     UINT  size = 0;         // size of the image encoder array in bytes
 
-    ImageCodecInfo* pImageCodecInfo = NULL;
-
     GetImageEncodersSize(&num, &size);
     if (size == 0) {
         return false;
     }
 
-    pImageCodecInfo = (ImageCodecInfo*)(malloc(size));
-    if (pImageCodecInfo == NULL) {
+    std::unique_ptr<ImageCodecInfo, FreeDeleter> pImageCodecInfo((ImageCodecInfo*)(malloc(size)));
+    if (!pImageCodecInfo) {
         return false;
     }
 
-    if (GetImageEncoders(num, size, pImageCodecInfo) != Ok) {
-        free(pImageCodecInfo);
+    if (GetImageEncoders(num, size, pImageCodecInfo.get()) != Ok) {
         return false;
     }
 
     for (UINT j = 0; j < num; ++j)
     {
-        if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0)
+        if (wcscmp(pImageCodecInfo.get()[j].MimeType, format) == 0)
         {
-            *pClsid = pImageCodecInfo[j].Clsid;
-            free(pImageCodecInfo);
+            *pClsid = pImageCodecInfo.get()[j].Clsid;
             return true;
         }
     }
 
-    free(pImageCodecInfo);
     return false;
 }
 
 bool SaveBitmapAsJpeg(HBITMAP hBmp, LPCWSTR lpszFilename, ULONG uQuality)
 {
-    GdiplusStartupInput gdiplusStartupInput;
-    ULONG_PTR gdiplusToken;
-    GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+    GdiplusScope gdiplus_scope;
+    if (!gdiplus_scope.IsValid()) {
+        return false;
+    }
 
-    Bitmap *pBitmap = new Bitmap(hBmp, NULL);
+    std::unique_ptr<Bitmap> pBitmap(new Bitmap(hBmp, NULL));
 
     CLSID imageCLSID;
     GetEncoderClsid(L"image/jpeg", &imageCLSID);
@@ -171,99 +212,101 @@ bool SaveBitmapAsJpeg(HBITMAP hBmp, LPCWSTR lpszFilename, ULONG uQuality)
 
     Status result = pBitmap->Save(lpszFilename, &imageCLSID, &encoderParams);
 
-    delete pBitmap;
-    GdiplusShutdown(gdiplusToken);
-
     return result == Ok;
 }
 
 bool SaveBitmapAsPng(HBITMAP hBmp, LPCWSTR lpszFilename)
 {
-    GdiplusStartupInput gdiplusStartupInput;
-    ULONG_PTR gdiplusToken;
-    GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+    GdiplusScope gdiplus_scope;
+    if (!gdiplus_scope.IsValid()) {
+        return false;
+    }
 
-    Bitmap *pBitmap = new Bitmap(hBmp, NULL);
+    std::unique_ptr<Bitmap> pBitmap(new Bitmap(hBmp, NULL));
 
     CLSID imageCLSID;
     GetEncoderClsid(L"image/png", &imageCLSID);
 
     Status result = pBitmap->Save(lpszFilename, &imageCLSID, NULL);
 
-    delete pBitmap;
-    GdiplusShutdown(gdiplusToken);
-
     return result == Ok;
 }
 
 
 bool SaveClipboardImageAsJpeg(const std::string &target_path, float compression_factor) {
-    if (!OpenClipboard(NULL)) {
+    ClipboardScope clipboard_scope;
+    if (!clipboard_scope.IsValid()) {
         return false;
     }
 
     bool result = false;
     HBITMAP image_handle = (HBITMAP)GetClipboardData(CF_BITMAP);
-    if (image_handle) {
-        std::wstring target_path_unicode = Utf8StringToUtf16String(target_path);
-        ULONG quality = (ULONG)(compression_factor * 100);
-        result = SaveBitmapAsJpeg(image_handle, target_path_unicode.c_str(), quality);
+    if (!image_handle) {
+        return false;
     }
 
-    CloseClipboard();
-    return result;
+    std::wstring target_path_unicode = Utf8StringToUtf16String(target_path);
+    ULONG quality = (ULONG)(compression_factor * 100);
+    return SaveBitmapAsJpeg(image_handle, target_path_unicode.c_str(), quality);
 }
 
 bool SaveClipboardImageAsPng(const std::string &target_path) {
-    if (!OpenClipboard(NULL)) {
+    ClipboardScope clipboard_scope;
+    if (!clipboard_scope.IsValid()) {
+        return false;
+    }
+
+    HBITMAP image_handle = (HBITMAP)GetClipboardData(CF_BITMAP);
+    if (!image_handle) {
+        return false;
+    }
+
+    std::wstring target_path_unicode = Utf8StringToUtf16String(target_path);
+    return SaveBitmapAsPng(image_handle, target_path_unicode.c_str());
+}
+
+bool PutImageIntoClipboard(const std::string &image_path) {
+    GdiplusScope gdiplus_scope;
+    if (!gdiplus_scope.IsValid()) {
         return false;
     }
 
     bool result = false;
-    HBITMAP image_handle = (HBITMAP)GetClipboardData(CF_BITMAP);
-    if (image_handle) {
-        std::wstring target_path_unicode = Utf8StringToUtf16String(target_path);
-        result = SaveBitmapAsPng(image_handle, target_path_unicode.c_str());
-    }
-
-    CloseClipboard();
-    return result;
-}
-
-bool PutImageIntoClipboard(const std::string &image_path) {
-    GdiplusStartupInput gdiplusStartupInput;
-    ULONG_PTR gdiplusToken;
-    GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
-
-    bool result = false;
     std::wstring image_path_unicode = Utf8StringToUtf16String(image_path);
-    Bitmap *pImage = new Bitmap(image_path_unicode.c_str());
+    std::unique_ptr<Bitmap> pImage(new Bitmap(image_path_unicode.c_str()));
     HBITMAP handle;
-    if (pImage->GetHBITMAP(Color::White, &handle) == Ok) {
-        BITMAP bm;
-        GetObject(handle, sizeof bm, &bm);
-        BITMAPINFOHEADER bi = { sizeof bi, bm.bmWidth, bm.bmHeight, 1, bm.bmBitsPixel, BI_RGB };
 
-        std::vector<BYTE> vec(bm.bmWidthBytes * bm.bmHeight);
-        auto hdc = GetDC(NULL);
-        GetDIBits(hdc, handle, 0, bi.biHeight, vec.data(), (BITMAPINFO*)&bi, 0);
-        ReleaseDC(NULL, hdc);
-
-        auto hmem = GlobalAlloc(GMEM_MOVEABLE, sizeof bi + vec.size());
-        auto buffer = (BYTE*)GlobalLock(hmem);
-        memcpy(buffer, &bi, sizeof bi);
-        memcpy(buffer + sizeof bi, vec.data(), vec.size());
-        GlobalUnlock(hmem);
-
-        if (OpenClipboard(NULL)) {
-            EmptyClipboard();
-            SetClipboardData(CF_DIB, hmem);
-            CloseClipboard();
-            result = true;
-        }
+    if (pImage->GetHBITMAP(Color::White, &handle) != Ok) {
+        return false;
     }
 
-    delete pImage;
-    GdiplusShutdown(gdiplusToken);
-    return result;
+    BITMAP bm;
+    GetObject(handle, sizeof bm, &bm);
+    BITMAPINFOHEADER bi = { sizeof bi, bm.bmWidth, bm.bmHeight, 1, bm.bmBitsPixel, BI_RGB };
+
+    std::vector<BYTE> vec(bm.bmWidthBytes * bm.bmHeight);
+    auto hdc = GetDC(NULL);
+    GetDIBits(hdc, handle, 0, bi.biHeight, vec.data(), (BITMAPINFO*)&bi, 0);
+    ReleaseDC(NULL, hdc);
+
+    auto hmem = GlobalAlloc(GMEM_MOVEABLE, sizeof bi + vec.size());
+    auto buffer = (BYTE*)GlobalLock(hmem);
+    memcpy(buffer, &bi, sizeof bi);
+    memcpy(buffer + sizeof bi, vec.data(), vec.size());
+    GlobalUnlock(hmem);
+
+    ClipboardScope clipboard_scope;
+    if (!clipboard_scope.IsValid()) {
+        GlobalFree(hmem);
+        return false;
+    }
+
+    EmptyClipboard();
+
+    if (!SetClipboardData(CF_DIB, hmem)) {
+        GlobalFree(hmem);
+        return false;
+    }
+
+    return true;
 }
