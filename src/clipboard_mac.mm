@@ -46,22 +46,10 @@ NSBitmapImageRep *getBitmapImageRepFromPasteboard() {
     }
 
     NSImage *image = [images firstObject];
-    NSArray<NSImageRep *> *reps = [image representations];
     NSBitmapImageRep *bitmapRep = nil;
-    if (reps) {
-        for (NSImageRep *rep in reps) {
-            if ([rep isKindOfClass:NSBitmapImageRep.class]) {
-                bitmapRep = (NSBitmapImageRep *)rep;
-                break;
-            }
-        }
-    }
-
-    if (!bitmapRep) {
-        NSData *tiffData = [image TIFFRepresentation];
-        if (tiffData) {
-            bitmapRep = [NSBitmapImageRep imageRepWithData:tiffData];
-        }
+    NSData *tiffData = [image TIFFRepresentation];
+    if (tiffData) {
+        bitmapRep = [NSBitmapImageRep imageRepWithData:tiffData];
     }
 
     return bitmapRep;
