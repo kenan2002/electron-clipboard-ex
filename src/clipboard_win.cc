@@ -312,3 +312,12 @@ bool PutImageIntoClipboard(const std::string &image_path) {
 
     return true;
 }
+
+bool ClipboardHasImage() {
+    ClipboardScope clipboard_scope;
+    if (!clipboard_scope.IsValid()) {
+        return false;
+    }
+
+    return static_cast<bool>(GetClipboardData(CF_BITMAP));
+}
