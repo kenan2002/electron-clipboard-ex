@@ -43,6 +43,11 @@
             "sources": [
               "src/clipboard_win.cc"
             ],
+            "libraries": [
+              "Gdiplus.lib",
+              "Shlwapi.lib",
+              "Shcore.lib"
+            ],
             "msvs_settings": {
               "VCCLCompilerTool": {
                 "AdditionalOptions": ["/std:c++17"]
