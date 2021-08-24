@@ -239,7 +239,6 @@ bool SaveClipboardImageAsJpeg(const std::string &target_path, float compression_
         return false;
     }
 
-    bool result = false;
     HBITMAP image_handle = (HBITMAP)GetClipboardData(CF_BITMAP);
     if (!image_handle) {
         return false;
@@ -271,7 +270,6 @@ bool PutImageIntoClipboard(const std::string &image_path) {
         return false;
     }
 
-    bool result = false;
     std::wstring image_path_unicode = Utf8StringToUtf16String(image_path);
     std::unique_ptr<Bitmap> pImage(new Bitmap(image_path_unicode.c_str()));
     HBITMAP handle;
@@ -290,6 +288,10 @@ bool PutImageIntoClipboard(const std::string &image_path) {
     ReleaseDC(NULL, hdc);
 
     auto hmem = GlobalAlloc(GMEM_MOVEABLE, sizeof bi + vec.size());
+    if (!hmem) {
+        return false;
+    }
+
     auto buffer = (BYTE*)GlobalLock(hmem);
     memcpy(buffer, &bi, sizeof bi);
     memcpy(buffer + sizeof bi, vec.data(), vec.size());
