@@ -95,3 +95,8 @@ bool PutImageIntoClipboard(const std::string &image_path) {
     [pasteboard clearContents];
     return [pasteboard writeObjects:@[image]];
 }
+
+bool ClipboardHasImage() {
+    NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+    return [pasteboard canReadObjectForClasses:@[NSImage.class] options:nil];
+}

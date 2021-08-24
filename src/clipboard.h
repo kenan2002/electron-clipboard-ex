@@ -16,4 +16,6 @@ bool SaveClipboardImageAsPng(const std::string &target_path);
 
 bool PutImageIntoClipboard(const std::string &image_path);
 
+bool ClipboardHasImage();
+
 #endif //ELECTRON_CLIPBOARD_EX_CLIPBOARD_H

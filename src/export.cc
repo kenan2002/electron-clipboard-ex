@@ -156,6 +156,12 @@ void PutImageIntoClipboardAsync(const Napi::CallbackInfo &info) {
     worker->Queue();
 }
 
+Napi::Boolean ClipboardHasImageJs(const Napi::CallbackInfo &info) {
+    Napi::Env env = info.Env();
+    bool result = ClipboardHasImage();
+    return Napi::Boolean::New(env, result);
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set("readFilePaths", Napi::Function::New(env, ReadFilePathsJs));
     exports.Set("writeFilePaths", Napi::Function::New(env, WriteFilePathsJs));
@@ -166,6 +172,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set("saveImageAsPngAsync", Napi::Function::New(env, SaveClipboardImageAsPngAsync));
     exports.Set("putImageSync", Napi::Function::New(env, PutImageIntoClipboardSync));
     exports.Set("putImageAsync", Napi::Function::New(env, PutImageIntoClipboardAsync));
+    exports.Set("hasImage", Napi::Function::New(env, ClipboardHasImageJs));
     return exports;
 }
 

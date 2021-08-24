@@ -55,5 +55,11 @@ clipboardEx.putImageSync(imagePath);
 await clipboardEx.putImage(imagePath);
 ```
 
+Check if clipboard has an image in it:
+```javascript
+const clipboardEx = require('electron-clipboard-ex');
+clipboardEx.hasImage();
+```
+
 ## Operating system support
 This library supports Windows and macOS. Linux is currently not supported, feel free to open a pull request if you need it.

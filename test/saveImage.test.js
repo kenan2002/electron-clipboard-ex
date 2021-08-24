@@ -3,7 +3,7 @@ const fs = require('fs-extra');
 const {
   clear,
   saveImageAsJpeg, saveImageAsPng, putImage,
-  saveImageAsJpegSync, saveImageAsPngSync, putImageSync
+  saveImageAsJpegSync, saveImageAsPngSync, putImageSync, hasImage
 } = require('..');
 
 const tempPath = path.resolve(__dirname, '../temp');
@@ -64,4 +64,13 @@ test('save png -- no image', () => {
 
 test('put image -- non-exist', () => {
   expect(putImageSync('/non/exist/path')).toBe(false);
+});
+
+test('has image -- false', () => {
+  expect(hasImage()).toBe(false);
+});
+
+test('has image -- true', () => {
+  putImageSync(sourceImage);
+  expect(hasImage()).toBe(true);
 });

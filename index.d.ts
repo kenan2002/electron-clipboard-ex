@@ -60,3 +60,8 @@ export function putImageSync(imagePath: string): boolean;
  * @see putImageSync
  */
 export function putImage(imagePath: string): Promise<boolean>;
+
+/**
+ * @returns {boolean} If clipboard has an image in it.
+ */
+export function hasImage(): boolean;

@@ -9,6 +9,7 @@ const {
   saveImageAsPngAsync,
   putImageSync,
   putImageAsync,
+  hasImage,
 } = require('bindings')();
 
 module.exports = {
@@ -21,4 +22,5 @@ module.exports = {
   saveImageAsPngSync,
   putImageSync,
   putImage: promisify(putImageAsync),
+  hasImage,
 };
