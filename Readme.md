@@ -22,5 +22,38 @@ const clipboardEx = require('electron-clipboard-ex');
 clipboardEx.writeFilePaths(filePaths);
 ```
 
+Clear clipboard:
+```javascript
+const clipboardEx = require('electron-clipboard-ex');
+clipboardEx.clear();
+```
+
+Save clipboard image as jpeg:
+```javascript
+const clipboardEx = require('electron-clipboard-ex');
+// sync
+clipboardEx.saveImageAsJpegSync(targetPath, compressFactor);
+// async
+await clipboardEx.saveImageAsJpeg(targetPath, compressFactor);
+```
+
+Save clipboard image as png:
+```javascript
+const clipboardEx = require('electron-clipboard-ex');
+// sync
+clipboardEx.saveImageAsPngSync(targetPath);
+// async
+await clipboardEx.saveImageAsPng(targetPath);
+```
+
+Put image into clipboard:
+```javascript
+const clipboardEx = require('electron-clipboard-ex');
+// sync
+clipboardEx.putImageSync(imagePath);
+// async
+await clipboardEx.putImage(imagePath);
+```
+
 ## Operating system support
 This library supports Windows and macOS. Linux is currently not supported, feel free to open a pull request if you need it.
