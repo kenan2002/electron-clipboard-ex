@@ -13,7 +13,10 @@
       ],
       "cflags!": ["-fno-exceptions"],
       "cflags_cc!": ["-fno-exceptions"],
-      "defines": ["NAPI_CPP_EXCEPTIONS"],
+      "defines": [
+        "NAPI_CPP_EXCEPTIONS",
+        "NAPI_VERSION=<(napi_build_version)",
+      ],
       "conditions": [
         [
           'OS=="mac"',
