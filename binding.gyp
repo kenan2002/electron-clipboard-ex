@@ -15,7 +15,7 @@
       "cflags_cc!": ["-fno-exceptions"],
       "defines": [
         "NAPI_CPP_EXCEPTIONS",
-        "NAPI_VERSION=<(napi_build_version)",
+        "NAPI_VERSION=3",
       ],
       "conditions": [
         [

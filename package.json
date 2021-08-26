@@ -8,7 +8,8 @@
     "src",
     "binding.gyp",
     "index.js",
-    "index.d.ts"
+    "index.d.ts",
+    "prebuilds"
   ],
   "homepage": "https://github.com/kenan2002/electron-clipboard-ex",
   "keywords": [
@@ -20,18 +21,18 @@
   "author": "kenan2002",
   "license": "MIT",
   "dependencies": {
-    "bindings": "^1.5.0",
-    "node-addon-api": "^4.0.0"
+    "node-addon-api": "^4.0.0",
+    "node-gyp-build": "^4.2.3"
   },
   "gypfile": true,
   "devDependencies": {
     "fs-extra": "^10.0.0",
-    "jest": "^27.0.6"
+    "jest": "^27.0.6",
+    "prebuildify": "^4.2.0"
   },
   "scripts": {
-    "test": "jest"
-  },
-  "binary": {
-    "napi_versions": [3]
+    "test": "jest",
+    "install": "node-gyp-build",
+    "prebuildify": "node build.js"
   }
 }

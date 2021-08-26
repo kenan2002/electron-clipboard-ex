@@ -10,7 +10,7 @@ const {
   putImageSync,
   putImageAsync,
   hasImage,
-} = require('bindings')();
+} = require('node-gyp-build')(__dirname);
 
 module.exports = {
   readFilePaths,
