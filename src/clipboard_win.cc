@@ -64,17 +64,26 @@ std::wstring Utf8StringToUtf16String(const std::string &input) {
     return result;
 }
 
-std::vector<std::wstring> Utf8StringToUtf16String(const std::vector<std::string> &input) {
-    auto result = std::vector<std::wstring>();
-    result.reserve(input.size());
-    for (auto p = input.cbegin(); p != input.cend(); ++p) {
-        result.emplace_back(Utf8StringToUtf16String(*p));
-    }
-    return result;
+std::wstring LongPathToShort(const std::wstring &long_path) {
+    const WCHAR *prefix = L"\\\\?\\";
+    std::wstring prefixed_long_path = prefix + long_path;
+    DWORD buffer_size = GetShortPathNameW(prefixed_long_path.c_str(), NULL, 0);
+    auto buffer_pointer = std::unique_ptr<WCHAR[]>(new WCHAR[buffer_size]);
+    GetShortPathNameW(prefixed_long_path.c_str(), buffer_pointer.get(), buffer_size);
+    size_t offset = wcslen(prefix);
+    return buffer_pointer.get() + offset;
 }
 
 void WriteFilePaths(const std::vector<std::string> &file_paths) {
-    const std::vector<std::wstring> file_paths_unicode = Utf8StringToUtf16String(file_paths);
+    std::vector<std::wstring> file_paths_unicode;
+    file_paths_unicode.reserve(file_paths.size());
+    for (auto p = file_paths.cbegin(); p != file_paths.cend(); ++p) {
+        std::wstring path_unicode = Utf8StringToUtf16String(*p);
+        if (path_unicode.size() > MAX_PATH) {
+            path_unicode = LongPathToShort(path_unicode);
+        }
+        file_paths_unicode.emplace_back(path_unicode);
+    }
 
     // size of DROPFILES structure followed by file paths in double null-terminated string
     SIZE_T structure_size_in_bytes = sizeof(DROPFILES);
