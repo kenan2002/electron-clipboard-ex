@@ -1,7 +1,6 @@
 # electron-clipboard-ex
 
 A node.js native addon designed to use with [electron](https://www.electronjs.org/) to extend its clipboard features.
-Please refer to [electron tutorial](https://electronjs.org/docs/tutorial/using-native-node-modules) for usage in electron.
 
 ![Travis](https://app.travis-ci.com/kenan2002/electron-clipboard-ex.svg?token=zab8ueZodq3Wkp6NTq2P&branch=master)
 [![npm version](https://badge.fury.io/js/electron-clipboard-ex.svg)](https://badge.fury.io/js/electron-clipboard-ex)
