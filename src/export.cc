@@ -141,7 +141,7 @@ void PutImageIntoClipboardAsync(const Napi::CallbackInfo &info) {
 
     if (info.Length() < 1) {
         Napi::TypeError::New(env, "Expect at least 1 argument but got 0.")
-        .ThrowAsJavaScriptException();
+                .ThrowAsJavaScriptException();
         return;
     }
 
