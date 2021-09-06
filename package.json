@@ -1,6 +1,6 @@
 {
   "name": "electron-clipboard-ex",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Extended electron.js clipboard module.",
   "main": "index.js",
   "os": [
