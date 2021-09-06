@@ -3,6 +3,10 @@
   "version": "1.3.2",
   "description": "Extended electron.js clipboard module.",
   "main": "index.js",
+  "os": [
+    "darwin",
+    "win32"
+  ],
   "types": "index.d.ts",
   "files": [
     "src",
